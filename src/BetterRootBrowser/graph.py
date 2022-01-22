@@ -95,20 +95,17 @@ def figs_in_table(figlist, ncols=3, nfigs=None):
 
     # TODO: Use above array of indices to arrange figures
 
-    # for irow in range(0, nrows):
+    rows_of_figs = []
+    for row in rows_of_figidxs:
+        cells = [
+            dbc.Col(
+                dcc.Graph(
+                    id=fig['name'],
+                    figure=make_heatmap(fig)
+                )
+            ) for fig in figlist
+        ]
 
-    #     fig1, fig2, fig3 = all_figs[irow], all_figs[irow+1], all_figs[irow+2]
+    rows_of_figs = dbc.Row(rows_of_figs)
 
-    #     cells = [
-    #         dbc.Col(dcc.Graph(id=fig1['name'], figure=fig1['fig']))
-    #     ]
-
-    #     rows_of_figs.append(
-    #         dbc.Row([
-    #             dbc.Col(
-    #                 dcc.Graph(id=fig1['name'], figure=fig1['fig'])
-    #             ),
-    #             dbc.Col() if ifig+1 == len(all_figs) else dbc.Col(dcc.Graph(id=fig2['name'], figure=fig2['fig']))
-    #         ])
-    #     )
     return rows_of_figs

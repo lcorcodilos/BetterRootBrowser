@@ -152,7 +152,7 @@ def extract(filepath: str, pick_objs: List[str] = []) -> List[ObjPackage]:
     file.close()
     return objs
 
-def open_file(filepath: str, pick_objs: List[str] = []) -> Dict[str, Union[str, np.ndarray]]:
+def open_file(filepath: str, pick_objs: List[str] = []) -> List[ObjPackage]:
     obj_pkgs = extract(filepath, pick_objs)
     return obj_pkgs
 
