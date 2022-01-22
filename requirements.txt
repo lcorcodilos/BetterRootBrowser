@@ -1,0 +1,6 @@
+dash
+dash-bootstrap-components
+dash-bootstrap-templates
+uproot
+plotly
+pandas
