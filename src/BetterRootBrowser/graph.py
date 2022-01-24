@@ -13,7 +13,7 @@ def edges_to_centers(x):
 
 def make_heatmap(hist_pkg):
     try:
-        z,x,y = hist_pkg['numpy']
+        z,x,y = hist_pkg['data']
     except Exception as e:
         print ('DEBUG: %s'%hist_pkg)
         raise e
@@ -63,7 +63,7 @@ def make_heatmap(hist_pkg):
         coloraxis3=dict(colorscale='thermal', showscale=False),
         showlegend=False,
         template="bootstrap",
-        width=800, height=600
+        autosize=True
     )
 
     fig.layout.xaxis2.title = dict(
@@ -76,11 +76,17 @@ def make_heatmap(hist_pkg):
 
     fig.layout.xaxis2.tickfont.size = 16
     fig.layout.yaxis2.tickfont.size = 16
-    fig.layout.margin.l = 150
+    fig.layout.margin.l = 40
+    fig.layout.margin.r = 100
+    fig.layout.margin.t = 15
     # fig.layout.margin.b = 250
 
     # fig.write_html("plot.html")
-    return fig
+    return dcc.Graph(
+        id=hist_pkg['name'],
+        figure=fig,
+        style={'width': '90%', 'height': '90%'}
+    )
 
 def figs_in_table(figlist, ncols=3, nfigs=None):
     if nfigs is None:

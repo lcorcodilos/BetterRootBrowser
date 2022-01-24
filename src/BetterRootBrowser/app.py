@@ -4,7 +4,7 @@ import dash, sys
 from dash import dcc, html
 import dash_bootstrap_components as dbc
 from dash_bootstrap_templates import load_figure_template
-import page, data, graph
+import page, data, graph, callbacks
 
 max_height = "100vh"
 max_width = ""
@@ -26,17 +26,15 @@ if __name__ == '__main__':
         [
             page.header,
             page.file_path_input,
-            # html.Div('', style={'flex': 1}),
-            page.body,
+            page.content_body,
+            page.footer,
 
-            dbc.Alert("An app made by Lucas Corcodilos", color="primary", class_name='mb-0 rounded-0'),
-
-            # html.Div(
-            #     rows_of_figs
-            # ),
+            dcc.Store(data=[], id='root-objs')
 
         ], fluid=False, class_name="dbc p-2 m-0 d-flex",
         style={"height": "100vh", "width": "100vw", "max-width": "100%", "max-height": "100vh", "flex-flow": "column nowrap"}
     )
+
+    callbacks.assign(app)
 
     app.run_server(debug=True)

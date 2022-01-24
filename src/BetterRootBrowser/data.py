@@ -3,12 +3,12 @@ from typing import Dict, List, Union
 import numpy as np
 from numpy.typing import NDArray
 import pandas as pd
-import copy
+import json
 
 uprootfile = uproot.reading.ReadOnlyDirectory
 
 import logging
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:  %(message)s')
+logging.basicConfig(level=logging.WARNING, format='%(levelname)s:  %(message)s')
 
 def to_str(obj):
     lines = []
@@ -116,7 +116,7 @@ def supported_obj_keys(file: uprootfile, pick_objs: List[str]) -> List[str]:
     for obj_name in [k.split(';')[0] for k in file.keys()]:
         class_match = [file.classname_of(obj_name).startswith(classname) for classname in ['TH','TTree']]
 
-        if obj_name not in pick_objs:
+        if (pick_objs != []) and (obj_name not in pick_objs):
             continue
         elif any(class_match):
             out.append(obj_name)
@@ -129,11 +129,15 @@ def supported_obj_keys(file: uprootfile, pick_objs: List[str]) -> List[str]:
 
     return out 
 
-def extract(filepath: str, pick_objs: List[str] = []) -> List[ObjPackage]:
+def extract(filepath: str, pick_objs: List[str] = []) -> Dict[str, ObjPackage]:
     file = uproot.open(filepath)
-    objs = []
+    objs = {}
+    supported_keys = supported_obj_keys(file, pick_objs)
 
-    for obj_name in supported_obj_keys(file, pick_objs):
+    logging.debug(f"All keys in file: {', '.join([k for k in file.keys()])}")
+    logging.debug(f"Opening supported keys: {', '.join(supported_keys)}")
+
+    for obj_name in supported_keys:
         pkg = ObjPackage(
             name   = obj_name.split(';')[0],
             type   = file.classname_of(obj_name)
@@ -147,12 +151,13 @@ def extract(filepath: str, pick_objs: List[str] = []) -> List[ObjPackage]:
         elif pkg['type'].startswith('TTree'):
             pkg['data']   = get_flat_df(file[obj_name])
 
-        objs.append(pkg)
+        objs[pkg['name']] = pkg
 
     file.close()
     return objs
 
-def open_file(filepath: str, pick_objs: List[str] = []) -> List[ObjPackage]:
+def open_file(filepath: str, pick_objs: List[str] = []) -> Dict[str, ObjPackage]:
+    logging.debug(f'Opening file {filepath}')
     obj_pkgs = extract(filepath, pick_objs)
     return obj_pkgs
 
