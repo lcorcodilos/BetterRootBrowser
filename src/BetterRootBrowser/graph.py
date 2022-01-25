@@ -6,11 +6,13 @@ from dash import dcc, html
 import dash_bootstrap_components as dbc
 from dash_bootstrap_templates import load_figure_template
 
+'''Helpers'''
 def edges_to_centers(x):
     return np.array([
         (x[i]+x[i+1])/2 for i in range(len(x)-1)
     ])
 
+'''Standard plot makers'''
 def make_heatmap(hist_pkg):
     try:
         z,x,y = hist_pkg['data']
@@ -67,11 +69,10 @@ def make_heatmap(hist_pkg):
     )
 
     fig.layout.xaxis2.title = dict(
-        text = hist_pkg['xtitle']#r'$\Large{m_{t} \text{ [GeV]}}$',
+        text = hist_pkg['xtitle']
     )
     fig.layout.yaxis2.title = dict(
-        text = hist_pkg['ytitle'],
-        # font_size = 122
+        text = hist_pkg['ytitle']
     )
 
     fig.layout.xaxis2.tickfont.size = 16
@@ -79,7 +80,6 @@ def make_heatmap(hist_pkg):
     fig.layout.margin.l = 40
     fig.layout.margin.r = 100
     fig.layout.margin.t = 15
-    # fig.layout.margin.b = 250
 
     # fig.write_html("plot.html")
     return dcc.Graph(
@@ -88,30 +88,18 @@ def make_heatmap(hist_pkg):
         style={'width': '90%', 'height': '90%'}
     )
 
-def figs_in_table(figlist, ncols=3, nfigs=None):
+'''Layout tools'''
+def figs_in_grid(figlist, ncols=3, nfigs=None):
     if nfigs is None:
         nfigs = len(figlist)
     nrows = nfigs//ncols + 1
 
-    rows_of_figidxs = np.pad(
-        np.arange(nfigs),
-        (0, ncols-nfigs%ncols),
-        'constant', constant_values=(-1)
-    ).reshape((nrows,ncols))
+    partitioned_figs = [figlist[i: min(i+ncols, nfigs)] for i in range(0, nfigs, ncols)]
 
-    # TODO: Use above array of indices to arrange figures
-
-    rows_of_figs = []
-    for row in rows_of_figidxs:
-        cells = [
-            dbc.Col(
-                dcc.Graph(
-                    id=fig['name'],
-                    figure=make_heatmap(fig)
-                )
-            ) for fig in figlist
-        ]
-
-    rows_of_figs = dbc.Row(rows_of_figs)
+    rows_of_figs = [
+        dbc.Row(
+            [dbc.Col(fig) for fig in row]
+        ) for row in partitioned_figs
+    ]
 
     return rows_of_figs
