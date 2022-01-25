@@ -1,8 +1,13 @@
 import logging, dash
+from tokenize import group
 from dash.dependencies import Input, Output, State, ALL, MATCH
 import dash_bootstrap_components as dbc
-import os, data, json, graph
+import os, data, json, graph, page
 import numpy as np
+from glob import glob
+from pprint import PrettyPrinter
+
+pp = PrettyPrinter(indent=4)
 
 text_color_classes = [
     "text-primary", "text-secondary",
@@ -19,6 +24,28 @@ def get_id_of_trigger():
     trigger = dash.callback_context.triggered[0]
     trigger = trigger['prop_id'].split('}')[0]+'}'
     return json.loads(trigger)['id']
+
+def unpack_file_paths(file_path_str):
+    # first split by comma
+    file_paths = [p.strip() for p in file_path_str.split(',')]
+    found, missing = [], []
+    for path in file_paths:
+        abs_path = os.path.abspath(os.path.expanduser(path))
+        
+        if '*' not in abs_path:
+            if os.path.isfile(abs_path):
+                found.append(abs_path)
+            else:
+                missing.append(abs_path)
+
+        else:
+            globbed_paths = glob(abs_path)
+            if len(globbed_paths) == 0:
+                missing.append(abs_path)
+            else:
+                found.extend(globbed_paths)
+
+    return found, missing
 
 def remove_text_color_class(class_str):
     classes = class_str.split()
@@ -45,70 +72,91 @@ def assign(app):
             file_open_msg_class=State('file-open-msg', 'className')
         ),
         output=[
-            Output('file-path', 'valid'),
-            Output('file-path', 'invalid'),
+            Output('file-list-container', 'children'),
             Output('file-open-msg', 'children'),
-            Output('file-open-msg', 'className')
+            Output('file-open-msg', 'className'),
+            Output('root-objs', 'data')
         ])
     def check_for_file_on_button_click(click_flag, file_path, file_open_msg_class):
-        valid, invalid, msg, msg_class = False, False, '', ''
+        valid, invalid, msg, msg_class = False, False, '', file_open_msg_class
         if click_flag == 0:
-            return valid, invalid, msg, msg_class
+            return [], msg, msg_class, ''
 
-        file_path = os.path.abspath(os.path.expanduser(file_path.strip()))
-        file_title = file_path.split('/')[-1]
-        if os.path.isfile(file_path):
+        found_files, missing_files = unpack_file_paths(file_path)
+        if len(found_files) > 0:
             valid = True
-            msg = f"Successfully opened {file_title}'!"
+            file_titles = ', '.join(f.split('/')[-1] for f in found_files)
+            success_msg = f"Successfully opened all files!"
+
+        if len(missing_files) > 0:
+            invalid = True
+            file_titles = ', '.join(f.split('/')[-1] for f in missing_files)
+            fail_msg = f"Error: Could not open {file_titles}!"
+            print('Not able to find file paths:\n\t%s'%",\n\t".join(missing_files))
+
+        if invalid:
+            msg = fail_msg
+            msg_class = remove_text_color_class(file_open_msg_class)+' text-danger'
+        elif valid:
+            msg = success_msg
             msg_class = remove_text_color_class(file_open_msg_class)+' text-success'
         else:
-            invalid = True
-            msg = f"Error: Could not open {file_path}'!"
-            msg_class = remove_text_color_class(file_open_msg_class)+' text-danger'
+            msg = ''
+            msg_class = file_open_msg_class
         
-        return valid, invalid, msg, msg_class
+        file_accordion_items = []
+        data_loaded = {}
+        for ifile, file_name in enumerate(found_files):
+            open_file = data.open_file(file_name)
+            grouped_names = {}
+            for obj_name, obj in open_file.items():
+                if obj['type'] not in grouped_names.keys():
+                    grouped_names[obj['type']] = []
+                grouped_names[obj['type']].append(obj_name)
 
-    # On file-path valid, open file and display name + list of objects
+            type_accordion_items = []
+            for obj_type, obj_names in grouped_names.items():
+                obj_radio = page.obj_radio_template(
+                    f'file-{ifile}-type-{obj_type}-radio',
+                    [ {'label': n, 'value':n} for n in obj_names ]
+                )
+
+                type_accordion_items.append(
+                    page.type_accordion_item(
+                        obj_radio, obj_type, ifile
+                    )
+                )
+
+            type_accordion = page.type_accordion(
+                type_accordion_items, ifile
+            )
+
+            file_accordion_items.append(
+                page.file_accordion_item(type_accordion, file_name.split('/')[-1], ifile)
+            )
+
+            data_loaded[f'file-{ifile}'] = open_file
+
+        file_accordion = page.file_accordion(file_accordion_items)
+
+        return file_accordion, msg, msg_class, json.dumps(data_loaded, default=NumpySerialize)
+
     @app.callback(
         inputs=dict(
-            file_valid=Input('file-path', 'valid'),
-            file_path=State('file-path','value'),
-        ),
-        output=[Output('file-title','children'), Output('obj-list','options'), Output('root-objs', 'data')]
-    )
-    def load_file(file_valid, file_path):
-        if file_valid:
-            file_title = file_path.strip().split('/')[-1]
-            file_objs = data.open_file(file_path)
-
-            obj_names = [obj_name for obj_name in file_objs.keys()]
-
-            logging.debug(f"Objects in file: {', '.join(obj_names)}")
-
-            obj_button_list = [
-                # dbc.ListGroupItem(
-                #     obj['name'], id=obj['name'],
-                #     class_name='text-secondary',
-                #     action=True, active=False
-                # ) for obj in file_objs
-                {"label": n, 'value': n} for n in obj_names
-            ]
-
-            return file_title, obj_button_list, json.dumps(file_objs, default=NumpySerialize)
-
-        else:
-            return '', [], []
-
-    @app.callback(
-        inputs=dict(
-            obj_selected = Input('obj-list', 'value'),
+            objs = Input({'id': ALL, 'type': 'obj-radio'}, 'value'),
+            file_id = State('file-list', 'active_item'),
             root_objs = State('root-objs', 'data')
         ),
         output=Output('display-area', 'children'),
-        prevent_initial_call=True
+        prevent_initial_call=True,
+        # suppress_callback_exceptions=True
     )
-    def display_obj(obj_selected, root_objs):
-        numpy_data = json.loads(root_objs)[obj_selected]
+    def display_obj(objs, file_id, root_objs):
+        if not any(objs):
+            return []
+
+        obj_selected = dash.callback_context.triggered[0]['value']
+        numpy_data = json.loads(root_objs)[file_id][obj_selected]
 
         out = [
             dash.html.H5(obj_selected),

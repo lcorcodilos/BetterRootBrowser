@@ -41,8 +41,32 @@ file_path_input = html.Div([
 #-----------#
 # Left pane #
 #-----------#
-obj_list = dbc.RadioItems(
-    id='obj-list',
+file_accordion = lambda file_accordion_items: dbc.Accordion(
+    children=file_accordion_items,
+    start_collapsed=True, flush=True,
+    id='file-list'
+)
+
+file_accordion_item = lambda type_accordion, file_name, ifile: dbc.AccordionItem(
+    children=type_accordion,
+    title=file_name,
+    item_id=f'file-{ifile}'
+)
+
+type_accordion = lambda type_accordion_items, ifile: dbc.Accordion(
+    children=type_accordion_items,
+    start_collapsed=True, flush=True,
+    id=f'file-{ifile}-type-list'
+)
+
+type_accordion_item = lambda obj_radio, obj_type, ifile: dbc.AccordionItem(
+    title=obj_type,
+    item_id=f'file-{ifile}-type-{obj_type}',
+    children=obj_radio
+)
+
+obj_radio_template = lambda index, opts: dbc.RadioItems(
+    id={'id': index, 'type': 'obj-radio'},
     style={'display': 'flex', 'flex-flow': 'column nowrap', 'width': 'max-content'},
     class_name='btn-group',
 
@@ -53,18 +77,15 @@ obj_list = dbc.RadioItems(
     label_style={'text-align': 'left', 'width': 'inherit'},
 
     label_checked_class_name='active',
-    options=[],
+    options=opts,
     value=None
 )
 
 file_info_pane = html.Div(
-    [
-        html.P('', id='file-title'),
-        html.Div(obj_list, style={'overflow': 'auto'})
-    ],
-    id='file-info-pane',
-    className='pe-4 pt-2 d-flex',
-    style={'flex-flow': 'column nowrap', 'overflow': 'hidden', 'width': '30%'}
+    file_accordion([]),
+    id='file-list-container',
+    className='pe-4 d-flex',
+    style={'flex-flow': 'column nowrap', 'overflow': 'auto', 'width': '30%'}
 )
 
 #------------#
