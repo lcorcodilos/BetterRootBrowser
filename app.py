@@ -4,7 +4,7 @@ import dash, sys
 from dash import dcc, html
 import dash_bootstrap_components as dbc
 from dash_bootstrap_templates import load_figure_template
-import page, data, graph, callbacks
+from BetterRootBrowser import page, data, graph, callbacks
 
 max_height = "100vh"
 max_width = ""
