@@ -1,0 +1,4 @@
+src/*.egg-info
+src/BetterRootBrowser/__pycache__
+build/
+_*.py
