@@ -2,8 +2,10 @@ import logging, dash
 from tokenize import group
 from dash.dependencies import Input, Output, State, ALL, MATCH
 import dash_bootstrap_components as dbc
-import os, data, json, graph, page
+import os, json
+from BetterRootBrowser import data, graph, page
 import numpy as np
+import pandas as pd
 from glob import glob
 from pprint import PrettyPrinter
 
@@ -55,12 +57,15 @@ def remove_text_color_class(class_str):
             out.append(classname)
     return ' '.join(out)
 
-def NumpySerialize(obj):
+def NumpyPandasSerialize(obj):
     if type(obj).__module__ == np.__name__:
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         else:
             return obj.item()
+    elif isinstance(obj, pd.core.frame.DataFrame):
+        return obj.to_json(orient='records')
+
     raise TypeError('Unknown type:', type(obj))
 
 def assign(app):
@@ -72,10 +77,10 @@ def assign(app):
             file_open_msg_class=State('file-open-msg', 'className')
         ),
         output=[
-            Output('file-list-container', 'children'),
+            Output('loaded-browser', 'children'),
             Output('file-open-msg', 'children'),
             Output('file-open-msg', 'className'),
-            Output('root-objs', 'data')
+            Output('file-paths', 'data')
         ])
     def check_for_file_on_button_click(click_flag, file_path, file_open_msg_class):
         valid, invalid, msg, msg_class = False, False, '', file_open_msg_class
@@ -105,9 +110,9 @@ def assign(app):
             msg_class = file_open_msg_class
         
         file_accordion_items = []
-        data_loaded = {}
+        file_paths = {}
         for ifile, file_name in enumerate(found_files):
-            open_file = data.open_file(file_name)
+            open_file = data.get_file_info(file_name)
             grouped_names = {}
             for obj_name, obj in open_file.items():
                 if obj['type'] not in grouped_names.keys():
@@ -135,33 +140,32 @@ def assign(app):
                 page.file_accordion_item(type_accordion, file_name.split('/')[-1], ifile)
             )
 
-            data_loaded[f'file-{ifile}'] = open_file
+            file_paths[f'file-{ifile}'] = file_name
 
         file_accordion = page.file_accordion(file_accordion_items)
 
-        return file_accordion, msg, msg_class, json.dumps(data_loaded, default=NumpySerialize)
+        return file_accordion, msg, msg_class, json.dumps(file_paths)#, json.dumps(data_loaded, default=NumpyPandasSerialize)
 
     @app.callback(
         inputs=dict(
             objs = Input({'id': ALL, 'type': 'obj-radio'}, 'value'),
             file_id = State('file-list', 'active_item'),
-            root_objs = State('root-objs', 'data')
+            file_paths = State('file-paths', 'data')
         ),
-        output=Output('display-area', 'children'),
+        output=Output('loaded-content', 'children'),
         prevent_initial_call=True,
         # suppress_callback_exceptions=True
     )
-    def display_obj(objs, file_id, root_objs):
+    def display_obj(objs, file_id, file_paths):
         if not any(objs):
             return []
 
+        file_paths = json.loads(file_paths)
         obj_selected = dash.callback_context.triggered[0]['value']
-        numpy_data = json.loads(root_objs)[file_id][obj_selected]
+        data_to_display = data.extract_from_file(file_paths[file_id], obj_selected)
 
         out = [
             dash.html.H5(obj_selected),
-            graph.make_heatmap(numpy_data)
+            graph.make_display(data_to_display)
         ]
         return out 
-
-    

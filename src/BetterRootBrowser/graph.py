@@ -1,8 +1,9 @@
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import dash, uproot, sys
-from dash import dcc, html
+import json
+from dash import dcc, html, dash_table
 import dash_bootstrap_components as dbc
 from dash_bootstrap_templates import load_figure_template
 
@@ -13,6 +14,18 @@ def edges_to_centers(x):
     ])
 
 '''Standard plot makers'''
+def make_display(obj_pkg):
+    if isinstance(obj_pkg['data'], str):
+        return obj_pkg['data']
+    if obj_pkg['type'] == 'TTree':
+        return make_table(obj_pkg)
+    elif obj_pkg['type'].startswith('TH1'):
+        return make_1D(obj_pkg)
+    elif obj_pkg['type'].startswith('TH2'):
+        return make_heatmap(obj_pkg)
+    else:
+        return html.Div(f'Object type {obj_pkg["type"]} is not currently supported.')
+
 def make_heatmap(hist_pkg):
     try:
         z,x,y = hist_pkg['data']
@@ -88,11 +101,39 @@ def make_heatmap(hist_pkg):
         style={'width': '90%', 'height': '90%'}
     )
 
+def make_1D(hist_pkg):
+    try:
+        y,x = hist_pkg['data']
+    except Exception as e:
+        print ('DEBUG: %s'%hist_pkg)
+        raise e
+
+    x = edges_to_centers(x)
+
+    load_figure_template("sandstorm")
+    return dcc.Graph(
+        id=hist_pkg['name'],
+        figure=go.Figure(go.Bar(
+            x=x, y=y,
+            marker=dict(color=sum(y), coloraxis="coloraxis")
+        )),
+        style={'width': '90%', 'height': '90%'}
+    )
+
+def make_table(array_pkg):
+    df = array_pkg['data']
+    df = df.iloc[:100,:4]
+    column_names = df.columns.to_list()
+    return dash_table.DataTable(
+        id='table',
+        data=df.to_dict('records'),
+        columns=[{'name':name, 'id':f'col-{name}'} for name in column_names]
+    )
+
 '''Layout tools'''
 def figs_in_grid(figlist, ncols=3, nfigs=None):
     if nfigs is None:
         nfigs = len(figlist)
-    nrows = nfigs//ncols + 1
 
     partitioned_figs = [figlist[i: min(i+ncols, nfigs)] for i in range(0, nfigs, ncols)]
 

@@ -27,8 +27,18 @@ footer = dbc.Alert(
 file_path_input = html.Div([
         html.Div(
             [
-                dbc.Input(value='~/CMS/BoostedTH/rootfiles/THselection_QCD_16.root',placeholder='Path to ROOT file...', valid=False, invalid=False, class_name='flex-grow-5', id='file-path'),
-                dbc.Button('Open', color='primary', outline=True, n_clicks=0, class_name='ms-2 flex-grow-1', id='file-open-button', type='submit'),
+                dbc.Input(
+                    value='~/CMS/temp/nano_4.root',
+                    placeholder='Path to ROOT file...',
+                    valid=False, invalid=False,
+                    class_name='flex-grow-5', id='file-path'
+                ),
+                dbc.Button(
+                    'Open', color='primary',
+                    outline=True, n_clicks=0,
+                    class_name='ms-2 flex-grow-1', 
+                    id='file-open-button', type='submit'
+                ), 
             ], className='d-flex mb-1'
         ),
         html.P('', id='file-open-msg', className='ms-2 mb-0')
@@ -81,21 +91,33 @@ obj_radio_template = lambda index, opts: dbc.RadioItems(
     value=None
 )
 
-file_info_pane = html.Div(
-    file_accordion([]),
-    id='file-list-container',
-    className='pe-4 d-flex',
-    style={'flex-flow': 'column nowrap', 'overflow': 'auto', 'width': '30%'}
+file_info_pane = dcc.Loading(
+    html.Div(
+        file_accordion([]),
+        id='loaded-browser',
+        className='pe-4 d-flex',
+    ),
+    id="file-browser-container",
+    parent_className='d-flex',
+    type='default',
+    parent_style={'flex-flow': 'column nowrap', 'overflow': 'auto', 'min-width': '15%', 'width': 'max-content', 'max-width': '25%'}
 )
+
 
 #------------#
 # Right pane #
 #------------#
-display_area = html.Div(
-    ['Open a file and select an object from the left to display something'],
-    className='pt-2 ps-4 border-start w-100 h-100',
-    id='display-area'
+display_area = dcc.Loading(
+    html.Div(
+        'Open a file and select an object from the left to display something',
+        id='loaded-content',
+        className='pt-2 ps-4 border-start flex-grow-1'
+    ),
+    id='display-area',
+    type="default",
+    parent_className='d-flex flex-grow-1'
 )
+    
 
 #-----------#
 # Content body #

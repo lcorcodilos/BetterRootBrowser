@@ -86,8 +86,14 @@ def get_flat_df(tree: uproot.models.TTree, n_subentries: int = 5) -> pd.DataFram
         pd.DataFrame: [description]
     '''
     # Uproot magic - keys are branch names, values are array of arrays
-    # where the sub arrays are of variable length
-    tree_dict = tree.arrays(library='np')
+    # where the sub arrays are of variable length.
+    # Removes anything from edm namespace (CMSSW)
+    edm_filter = lambda b: 'edm::' not in b.typename#'/^.(?!(edm\:\:))$/'
+
+    if len(tree.keys(filter_branch=edm_filter)) == 0:
+        return 'Cound not open TTree due to unsupported branches in edm namespace.'
+
+    tree_dict = tree.arrays(library='np', filter_branch=edm_filter) 
 
     # Unstack TTree into Series (non-vector branches) and DataFrames (vector branches)
     all_columns = []
@@ -101,7 +107,7 @@ def get_flat_df(tree: uproot.models.TTree, n_subentries: int = 5) -> pd.DataFram
             all_columns.append(
                 pd.DataFrame(
                     set_n_subentries(branch_entries, n_subentries),
-                    columns = ['{branch_name}_{i}' for i in range(n_subentries)]
+                    columns = [f'{branch_name}_{i}' for i in range(n_subentries)]
                 )
             )
 
@@ -109,7 +115,7 @@ def get_flat_df(tree: uproot.models.TTree, n_subentries: int = 5) -> pd.DataFram
 
     return df
 
-def supported_obj_keys(file: uprootfile, pick_objs: List[str]) -> List[str]:
+def supported_obj_keys(file: uprootfile, pick_objs: List[str] = []) -> List[str]:
     # NOTE: Currently only supporting histograms
     unsupported = []
     out = []
@@ -129,40 +135,51 @@ def supported_obj_keys(file: uprootfile, pick_objs: List[str]) -> List[str]:
 
     return out 
 
-def extract(filepath: str, pick_objs: List[str] = []) -> Dict[str, ObjPackage]:
+def extract_from_file(filepath: str, obj_name: List[str] = []) -> Dict[str, ObjPackage]:
     file = uproot.open(filepath)
-    objs = {}
-    supported_keys = supported_obj_keys(file, pick_objs)
+    
+    if file.classname_of(obj_name).startswith('TH'):
+        pkg = ObjPackage(
+            name = obj_name,
+            data = file[obj_name].to_numpy(),
+            xtitle = file[obj_name].member('fXaxis').member('fTitle'),
+            ytitle = file[obj_name].member('fYaxis').member('fTitle'),
+            type = file.classname_of(obj_name)
+        )
+
+    elif file.classname_of(obj_name).startswith('TTree'):
+        pkg = ObjPackage(
+            name = obj_name,
+            data = get_flat_df(file[obj_name]),
+            type = file.classname_of(obj_name)
+        )
+    
+    else:
+        raise RuntimeError(f'Not able to extract object {obj_name} from {filepath}')
+
+    file.close()
+    return pkg
+
+def get_file_info(filepath: str) -> uproot.reading.ReadOnlyDirectory:
+    logging.debug(f'Opening file {filepath}')
+    file = uproot.open(filepath)
+
+    supported_keys = supported_obj_keys(file)
 
     logging.debug(f"All keys in file: {', '.join([k for k in file.keys()])}")
     logging.debug(f"Opening supported keys: {', '.join(supported_keys)}")
 
+    objs = {}
     for obj_name in supported_keys:
         pkg = ObjPackage(
             name   = obj_name.split(';')[0],
             type   = file.classname_of(obj_name)
         )
-        
-        if pkg['type'].startswith('TH'):
-            pkg['data']   = file[obj_name].to_numpy()
-            pkg['xtitle'] = file[obj_name].member('fXaxis').member('fTitle')
-            pkg['ytitle'] = file[obj_name].member('fYaxis').member('fTitle')
-
-        elif pkg['type'].startswith('TTree'):
-            pkg['data']   = get_flat_df(file[obj_name])
 
         objs[pkg['name']] = pkg
 
     file.close()
     return objs
 
-def open_file(filepath: str, pick_objs: List[str] = []) -> Dict[str, ObjPackage]:
-    logging.debug(f'Opening file {filepath}')
-    obj_pkgs = extract(filepath, pick_objs)
-    return obj_pkgs
-
 if __name__ == '__main__':
-    pkgs = open_file('~/CMS/temp/nano_4.root',pick_objs=['Events'])
-    #~/CMS/BoostedTH/rootfiles/THselection_QCD_16.root
-    for p in pkgs:
-        print (p)
+    pass

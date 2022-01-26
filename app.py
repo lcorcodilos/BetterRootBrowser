@@ -29,7 +29,7 @@ if __name__ == '__main__':
             page.content_body,
             page.footer,
 
-            dcc.Store(data=[], id='root-objs')
+            dcc.Store(data=[], id='file-paths')
 
         ], fluid=False, class_name="dbc p-2 m-0 d-flex",
         style={"height": "100vh", "width": "100vw", "max-width": "100%", "max-height": "100vh", "flex-flow": "column nowrap"}
