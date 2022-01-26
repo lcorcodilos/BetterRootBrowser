@@ -123,7 +123,7 @@ def assign(app):
             for obj_type, obj_names in grouped_names.items():
                 obj_radio = page.obj_radio_template(
                     f'file-{ifile}-type-{obj_type}-radio',
-                    [ {'label': n, 'value':n} for n in obj_names ]
+                    [ {'label': n, 'value':n} for n in sorted(obj_names) ]
                 )
 
                 type_accordion_items.append(

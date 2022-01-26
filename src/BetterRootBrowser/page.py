@@ -52,7 +52,7 @@ file_path_input = html.Div([
 # Left pane #
 #-----------#
 file_accordion = lambda file_accordion_items: dbc.Accordion(
-    children=file_accordion_items,
+    children=sorted(file_accordion_items, key=lambda item: item.title),
     start_collapsed=True, flush=True,
     id='file-list'
 )
@@ -64,7 +64,7 @@ file_accordion_item = lambda type_accordion, file_name, ifile: dbc.AccordionItem
 )
 
 type_accordion = lambda type_accordion_items, ifile: dbc.Accordion(
-    children=type_accordion_items,
+    children=sorted(type_accordion_items, key=lambda item: item.title),
     start_collapsed=True, flush=True,
     id=f'file-{ifile}-type-list'
 )
