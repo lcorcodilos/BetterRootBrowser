@@ -122,12 +122,27 @@ def make_1D(hist_pkg):
 
 def make_table(array_pkg):
     df = array_pkg['data']
-    df = df.iloc[:100,:4]
+    df = df.iloc[:100,:14]
+
     column_names = df.columns.to_list()
     return dash_table.DataTable(
         id='table',
         data=df.to_dict('records'),
-        columns=[{'name':name, 'id':f'col-{name}'} for name in column_names]
+        style_table={
+            # 'maxWidth': '100%',
+            # 'maxHeight': '100%',
+            'overflow': 'auto',
+            'height': '100%',
+            'width': 'fit-content',
+            'maxWidth': '100%',
+            'paddingRight': '1em'
+        },
+        style_data={
+            'whiteSpace': 'normal',
+            'height': 'auto',
+            'width': 'max-content'         
+        },
+        columns=[{'name':name, 'id':name} for name in column_names]
     )
 
 '''Layout tools'''

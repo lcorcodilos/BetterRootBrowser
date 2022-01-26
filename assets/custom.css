@@ -26,3 +26,7 @@
     width: max-content;
     min-width: 100%;
 }
+
+.dash-table-container{
+    min-height: 0%;
+}

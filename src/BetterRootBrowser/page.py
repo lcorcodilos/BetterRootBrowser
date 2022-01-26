@@ -111,11 +111,13 @@ display_area = dcc.Loading(
     html.Div(
         'Open a file and select an object from the left to display something',
         id='loaded-content',
-        className='pt-2 ps-4 border-start flex-grow-1'
+        className='d-flex pt-2 ps-4 border-start flex-grow-1',
+        style={'overflow':'hidden','height': '100%', 'width': '100%', 'flex-flow': 'column nowrap'}
     ),
     id='display-area',
     type="default",
-    parent_className='d-flex flex-grow-1'
+    parent_className='d-flex flex-grow-1',
+    parent_style={'min-width':0, 'min-height': 0} # makes sure tables dont overflow
 )
     
 
@@ -129,5 +131,5 @@ content_body = html.Div(
     ],
     className='d-flex border-top mt-1 pb-2',
     id='content-body',
-    style={'flex': 1, 'height': '100%', 'overflow': 'hidden'}
+    style={'flex': 1, 'height': '100%', 'width': '100%', 'overflow': 'hidden'}
 )
