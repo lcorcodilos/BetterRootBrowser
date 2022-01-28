@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 from glob import glob
 from pprint import PrettyPrinter
-
 pp = PrettyPrinter(indent=4)
 
 text_color_classes = [

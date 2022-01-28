@@ -3,7 +3,8 @@ from typing import Dict, List, Union
 import numpy as np
 from numpy.typing import NDArray
 import pandas as pd
-import json
+from pprint import PrettyPrinter
+pp = PrettyPrinter(indent=4)
 
 uprootfile = uproot.reading.ReadOnlyDirectory
 
@@ -47,7 +48,7 @@ class ObjPackage(dict):
     def __repr__(self) -> str:
         return "ObjPackage(\n\t{}\n)".format(to_str(self))
 
-def set_n_subentries(array_of_entries: NDArray, n_subentries: int) -> NDArray:
+def set_n_subentries(array_of_entries: NDArray, n_subentries: int, fillval: object=0) -> NDArray:
     '''Create a numpy array of zeros of the size of the input.
     Fill in indices for which there is a value, leaving out 
     any values that are out of index range.
@@ -59,8 +60,8 @@ def set_n_subentries(array_of_entries: NDArray, n_subentries: int) -> NDArray:
     Returns:
         NDArray: [description]
     '''
-    out = np.zeros(
-        (len(array_of_entries), n_subentries)
+    out = np.full(
+        (len(array_of_entries), n_subentries), fillval
     )
     for ientry, entry in enumerate(array_of_entries):
         for isubentry in range(n_subentries):
