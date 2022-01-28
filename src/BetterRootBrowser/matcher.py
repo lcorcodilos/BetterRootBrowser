@@ -91,6 +91,7 @@ def get_matching_idxs(token, tokens):
 
 '''----------------Array manipulations--------------------'''
 def merge_next_col(tokens, icol):
+    '''TODO: Needs to check that, if a column is already uniform, that no merge happens'''
     out = to_array(tokens)
     if icol+1 < out.shape[1]:
         new_row = []
@@ -102,10 +103,11 @@ def merge_next_col(tokens, icol):
         out[:, icol] = np.array(new_row, dtype='U256')
         out = np.delete(out, icol+1, 1)
     else:
-        logging.debug(f'Next column {icol+1} does not exist in array with {a.shape[1]} columns. Will not attempt merge.')
+        logging.debug(f'Next column {icol+1} does not exist in array with {out.shape[1]} columns. Will not attempt merge.')
     return to_Tokens(out)
 
-def merge_next_cell(token, tokens):
+def merge_next_cell(token, tokens, check_for_others=True):
+    '''TODO: Needs to check that, if a column is already uniform, that no merge happens.'''
     irow, icol = token.idx
     out = to_array(tokens)
     if icol+1 < out.shape[0]:
@@ -114,10 +116,30 @@ def merge_next_cell(token, tokens):
 
         temp = np.delete(out[irow], icol+1)
         out[irow] = np.append(temp, [''])
+
+        if check_for_others:
+            other_pair_idxs = other_merged_pairs(out[irow, icol], tokens)
+            for other_idx in other_pair_idxs:
+                out = merge_next_cell(tokens[other_idx], tokens, False)
+
     else:
-        logging.debug(f'Next column {icol+1} does not exist in array with {a.shape[1]} columns. Will not attempt merge.')
+        logging.debug(f'Next column {icol+1} does not exist in array with {out.shape[1]} columns. Will not attempt merge.')
     
     return to_Tokens(out)
+
+def other_merged_pairs(val, tokens):
+    a = to_array(tokens)
+    n_lists, n_tokens = a.shape
+    out = []
+    for irow, icol in itertools.product(range(n_lists), range(n_tokens-1)):
+        if a[irow, icol+1] != '':
+            pair = f'{a[irow, icol]}-{a[irow, icol+1]}'
+        else:
+            pair = a[irow, icol]
+        if pair == val:
+            out.append((irow,icol))
+
+    return out
 
 def has_room_right(token, tokens):
     return has_room(token, tokens, direction='r')
@@ -171,14 +193,16 @@ def slide_token(token, tokens, direction='', left=False, right=False):
 
     if d == 'r':
         if has_room_right(token, tokens):
-            out[irow, icol+1:next_blank_idx+1] = self.a[irow, icol:next_blank_idx]
+            new_row = out[irow, icol:next_blank_idx]
+            out[irow, icol+1:next_blank_idx+1] = new_row
             out[irow, icol] = ''
         else:
             logging.debug(f'Cannot move right because there are no empty tokens to use. {out[irow]}')
     
     elif d == 'l':
         if has_room_left(token):
-            out[irow, next_blank_idx:icol] = self.a[irow, next_blank_idx+1:icol+1]
+            new_row = out[irow, next_blank_idx+1:icol+1]
+            out[irow, next_blank_idx:icol] = new_row
             out[irow, icol] = ''
         else:
             logging.debug(f'Cannot move left because there are no empty tokens to use. {out[irow]}')
@@ -188,11 +212,38 @@ class TokenArray():
     def __init__(self, list_of_strs) -> None:
         self.raw_items = list_of_strs
         self.tokens = to_Tokens(tokenize(self.raw_items))
+        self.frozen_idxs = []
 
     @property
     def a(self):
         return to_array(self.tokens)
 
+    def inplace(self, new_tokens, flag, bypass_sanity=False):
+        if flag:
+            self.tokens = self.sanity(new_tokens, bypass_sanity) # this is the only place self.tokens is modified!
+            return None
+        else:
+            return new_tokens
+
+    def sanity(self, new_tokens, bypass_sanity):
+        # Check no currently frozen Tokens are changing
+        if not bypass_sanity:
+            for idx in self.frozen_idxs:
+                if self.a[idx] != to_array(new_tokens)[idx]:
+                    logging.warning('New tokens did not pass sanity check. Modified a frozen value at %s. Printing current array:\n%s'%(idx, self.a))
+                    return self.tokens
+        
+        # Look for new frozen tokens and freeze them
+        self.frozen_idxs = [] # need to reset in the case that a frozen column shifted from merge_next_col
+        for icol in range(new_tokens.shape[1]):
+            col = new_tokens[:, icol]
+            if (col == col[0]).all():
+                for irow in range(new_tokens.shape[0]):
+                    self.frozen_idxs.append((irow, icol))
+
+        return new_tokens
+
+    '''============ Entropy =================='''
     def entropy_of_col(self, icol):
         return entropy_of_col(self.tokens, icol)
 
@@ -203,36 +254,72 @@ class TokenArray():
         # Negative if new tokens are better (entropy decreases)
         return total_entropy(new_tokens) - self.total_entropy()
 
-    def entropy_per_merge(self):
-        n_lists, n_tokens = self.tokens.shape
+    def entropy_per_merge(self, token_array=None):
+        if token_array is None:
+            token_array = self.tokens
+
+        n_lists, n_tokens = token_array.shape
         entropy_gain_per_merge = np.zeros((n_lists,n_tokens-1))
         for ilist, itkn in itertools.product(range(n_lists), range(n_tokens-1)):
-            new_tokens = merge_next_cell(self.tokens, ilist, itkn)
+            new_tokens = merge_next_cell(token_array[ilist,itkn], token_array)
             entropy_gain_per_merge[ilist, itkn] = self.diff_entropy(new_tokens)
 
         return entropy_gain_per_merge
 
-    def merge_next_cell(self, irow, icol):
-        self.tokens = merge_next_cell(self.tokens, irow, icol)
+    '''=============== Tension ====================='''
+    def connection_tension(self, token, k=1):
+        return k * distance_between(token, self.tokens)/self.tokens.shape[1]
 
-    def merge_next_col(self, icol):
-        self.tokens = merge_next_col(self.tokens, icol)
+    def compression_force(self, token, k=1):
+        left_compression, l_idxs_to_merge = 0, None
+        right_compression, r_idxs_to_merge = 0, None
+        merge_possibilities = self.entropy_per_merge()[token.row]
 
-    def slide_token_right(self, token):
-        self.tokens = self.slide_token()
+        if not has_room_right(token, self.tokens):
+            right_half = merge_possibilities[token.col:]
+            if (right_half < 0).any():
+                best_compress_idxs = list(
+                    zip(
+                        *np.where(right_half == right_half.min())
+                    )
+                )
+                right_compression = sum(right_half.take(best_compress_idxs))
+                r_idxs_to_merge = best_compress_idxs+token.col # convert back to merge_possibilities indexing
+
+        if not has_room_left(token, self.tokens):
+            left_half = merge_possibilities[:token.col]
+            if (left_half < 0).any():
+                best_compress_idxs = list(
+                    zip(
+                        *np.where(left_half == left_half.min())
+                    )
+                )
+                left_compression = sum(left_half.take(best_compress_idxs))
+                l_idxs_to_merge = best_compress_idxs # already in merge_possibilities indexing
+
+        return k*right_compression, k*left_compression, l_idxs_to_merge, r_idxs_to_merge
+
+
+    '''============ Manipulations =================='''
+    def merge_next_cell(self, token, in_place=False):
+        result = merge_next_cell(token, self.tokens)
+        return self.inplace(result, in_place)
+
+    def merge_next_col(self, icol, in_place=False):
+        result = merge_next_col(self.tokens, icol)
+        return self.inplace(result, in_place, True)
+
+    def slide_token_right(self, token, in_place=False):
+        result = slide_token(token, self.tokens, 'r')
+        return self.inplace(result, in_place)
             
-    def slide_token_left(self, token):
-        irow, icol = token.idx
-        out = self.a.copy().astype('U256')
-        if self.has_room_left(token):
-            next_blank_idx = self.nearest_blank_left(token)
-            out[irow,next_blank_idx:icol] = self.a[irow,next_blank_idx+1:icol+1].copy()
-            out[irow,icol] = ''
-            token.col = icol-1
-        else:
-            logging.debug(f'Cannot move right because there are no empty tokens to use. {out[irow]}')
+    def slide_token_left(self, token, in_place=False):
+        result = slide_token(token, self.tokens, 'l')
+        return self.inplace(result, in_place)
 
-    
+    def drop_col(self, icol, in_place=False):
+        result = np.delete(self.tokens, icol, 1)
+        return self.inplace(result, in_place)
 
 class Token():
     def __init__(self, row, col, val) -> None:
