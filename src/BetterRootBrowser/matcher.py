@@ -333,4 +333,18 @@ class Token():
         return (self.row, self.col)
 
 if __name__ == '__main__':
-    pass
+    test_strs = [
+        # "THselection_Data_16.root",
+        # "THselection_Data_17.root",
+        # "THselection_Data_18.root",
+        # "THselection_Data_Run2.root",
+        "THselection_QCD_16.root",
+        "THselection_QCD_17.root",
+        "THselection_QCD_18.root",
+        "THselection_QCDHT1000_16.root",
+        "THselection_QCDHT1000_17.root",
+        "THselection_QCDHT1000_18.root",
+        "THselection_QCDHT1000_htag0p8_16.root",
+        "THselection_QCDHT1000_htag0p8_17.root",
+        "THselection_QCDHT1000_htag0p8_18.root",
+    ]
