@@ -100,7 +100,7 @@ file_info_pane = dcc.Loading(
     id="file-browser-container",
     parent_className='d-flex',
     type='default',
-    parent_style={'flex-flow': 'column nowrap', 'overflow': 'auto', 'min-width': '15%', 'width': 'max-content', 'max-width': '25%'}
+    parent_style={'flex-flow': 'column nowrap', 'overflow': 'auto', 'width': '25%'}
 )
 
 

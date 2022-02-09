@@ -23,8 +23,8 @@
 
 .accordion {
     /* padding: 0.2em 0em 1em 1.5em; */
-    width: max-content;
-    min-width: 100%;
+    width: 100%;
+    min-width: max-content;
 }
 
 .dash-table-container{
