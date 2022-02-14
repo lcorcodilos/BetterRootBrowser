@@ -172,4 +172,24 @@ def assign(app):
             header,
             graph.make_display(data_to_display)
         ]
-        return out 
+        return out
+
+    @app.callback(
+        Output("template-util-modal", "is_open"),
+        Input("template-button", "n_clicks"),
+        State("template-util-modal", "is_open"),
+    )
+    def open_template_util(btn, is_open):
+        if btn:
+            return not is_open
+        return is_open
+
+    @app.callback(
+        Output('template-instructions', 'is_open'),
+        Input("template-instructions-button", "n_clicks"),
+        State("template-instructions", "is_open"),
+    )
+    def open_template_instructions(btn, is_open):
+        if btn:
+            return not is_open
+        return is_open

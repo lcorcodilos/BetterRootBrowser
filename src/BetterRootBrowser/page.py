@@ -21,6 +21,59 @@ footer = dbc.Alert(
     id='footer'
 )
 
+#---------------#
+# Template form #
+#---------------#
+template_form = dbc.Modal(
+    html.Div([
+        html.Div(className='d-flex justify-content-between align-items-center mb-3 mt-2', children=[
+            html.H5('Specify a scheme for identifying template sets.'),
+            dbc.Button('Click for help', id='template-instructions-button', color='info', n_clicks=0),
+        ]),
+        dbc.Collapse(
+            [
+                html.P('Use the following keys to represent the hierarchical categories of your templates'),
+                html.Ul(
+                    [html.Li('$PROCESS - the process name such as "signal", "QCD", "data", etc.'),
+                    html.Li('$REGION - the region name such as "signal", "control", "validation", etc.'),
+                    html.Li('$SYSTEMATIC - the systematic uncertainty name such as "taggingSF", "JER", etc.')]
+                ),
+                html.H5('Example:', className='text-info'),
+                html.P('Consider the following set of files and their contents'),
+                html.Ul([
+                    html.Li('Ttbar_16.root'),
+                    html.Ul([
+                        html.Li('hist_SR_nominal'),
+                        html.Li('hist_CR_nominal'),
+                        html.Li('hist_SR_tagggingSF_up'),
+                        html.Li('hist_SR_tagggingSF_down')
+                    ]),
+                    html.Li('Signal_16.root'),
+                    html.Ul([
+                        html.Li('hist_SR_nominal'),
+                        html.Li('hist_CR_nominal'),
+                        html.Li('hist_SR_JER_up'),
+                        html.Li('hist_SR_JER_down')
+                    ])
+                ]),
+                html.P('For the nominal scheme, one would provide "$PROCESS.root:hist_$REGION_nominal".'),
+                html.P('For the +1 std. dev. scheme, one would provide "$PROCESS.root:hist_$REGION_$SYSTEMATIC_up".'),
+                html.P('For the -1 std. dev. scheme, one would provide "$PROCESS.root:hist_$REGION_$SYSTEMATIC_down".')
+            ], id='template-instructions', is_open=False
+        ),
+
+        dbc.Form(
+            [
+                dbc.Input(type="text", placeholder="Nominal shape scheme", id="nominal-scheme", className='mb-2'),
+                dbc.Input(type="text", placeholder="+1 std. dev. shape scheme", id="up-scheme", className='mb-2'),
+                dbc.Input(type="text", placeholder="-1 std. dev. shape scheme", id="down-scheme", className='mb-2'),
+                dbc.Button("Create", color="info")
+            ]
+        )
+    ], className='mt-2 ms-3 me-3 mb-2'),
+    id="template-util-modal", size="lg", is_open=False, className='h-25'
+)
+
 ##############
 # File input #
 ##############
@@ -38,7 +91,14 @@ file_path_input = html.Div([
                     outline=True, n_clicks=0,
                     class_name='ms-2 flex-grow-1', 
                     id='file-open-button', type='submit'
-                ), 
+                ),
+                dbc.Button(
+                    'Template Utility', color='primary',
+                    outline=True, n_clicks=0,
+                    class_name='ms-2', style={'min-width': 'max-content'},
+                    id='template-button', type='submit'
+                ),
+                template_form
             ], className='d-flex mb-1'
         ),
         html.P('', id='file-open-msg', className='ms-2 mb-0')
@@ -164,3 +224,4 @@ content_header_2D = lambda title, xrange, yrange: html.Div(
         range_select('Y projection', 'Range of X axis bins to consider', 'y-proj', {x:str(x) for x in xrange})
     ], className='d-flex justify-content-between align-items-center mb-2'
 )
+
