@@ -48,6 +48,15 @@ class ObjPackage(dict):
     def __repr__(self) -> str:
         return "ObjPackage(\n\t{}\n)".format(to_str(self))
 
+    @property
+    def xrange(self):
+        return self['data'][1]
+    
+    @property
+    def yrange(self):
+        if 'TH2' in self['type']:
+            return self['data'][2]
+
 def set_n_subentries(array_of_entries: NDArray, n_subentries: int, fillval: object=0) -> NDArray:
     '''Create a numpy array of zeros of the size of the input.
     Fill in indices for which there is a value, leaving out 
@@ -136,7 +145,7 @@ def supported_obj_keys(file: uprootfile, pick_objs: List[str] = []) -> List[str]
 
     return out 
 
-def extract_from_file(filepath: str, obj_name: List[str] = []) -> Dict[str, ObjPackage]:
+def extract_from_file(filepath: str, obj_name: List[str] = []) -> ObjPackage:
     file = uproot.open(filepath)
     
     if file.classname_of(obj_name).startswith('TH'):

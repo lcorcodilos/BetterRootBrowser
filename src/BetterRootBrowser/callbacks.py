@@ -163,8 +163,13 @@ def assign(app):
         obj_selected = dash.callback_context.triggered[0]['value']
         data_to_display = data.extract_from_file(file_paths[file_id], obj_selected)
 
+        if data_to_display['type'].startswith('TH2'):
+            header = page.content_header_2D(obj_selected, data_to_display.xrange, data_to_display.yrange)
+        else:
+            header = dash.html.H5(obj_selected)
+
         out = [
-            dash.html.H5(obj_selected),
+            header,
             graph.make_display(data_to_display)
         ]
         return out 

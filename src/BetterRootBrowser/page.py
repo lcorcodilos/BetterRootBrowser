@@ -120,7 +120,6 @@ display_area = dcc.Loading(
     parent_style={'min-width':0, 'min-height': 0} # makes sure tables dont overflow
 )
     
-
 #-----------#
 # Content body #
 #-----------#
@@ -132,4 +131,36 @@ content_body = html.Div(
     className='d-flex border-top mt-1 pb-2',
     id='content-body',
     style={'flex': 1, 'height': '100%', 'width': '100%', 'overflow': 'hidden'}
+)
+
+def range_select(title, text, id, valrange):
+    return dbc.DropdownMenu(
+        [
+            html.Div(
+                [
+                    html.P(text, className='m-auto ms-4'),
+                    dbc.Button('Apply', color='primary',
+                        outline=True, n_clicks=0,
+                        class_name='m-auto me-4', 
+                        id=f'{id}-button', type='submit')
+                ], className='d-flex justify-content-between align-items-center'
+            ),
+            html.Div(
+                    dcc.RangeSlider(
+                        marks=valrange, min=min(valrange), max=max(valrange), step=None,
+                        id=f'{id}-slider', allowCross=False,
+                        tooltip={"placement": "bottom", "always_visible": True}
+                    ),
+                    className='mt-2',
+                    style={'width': f'{len(valrange)}em'}
+                )
+            ], label=title, style={'min-width': 'max-content'}, className='m-auto ms-2 me-2', color='info'
+    )
+
+content_header_2D = lambda title, xrange, yrange: html.Div(
+    [
+        html.H5(title, className='flex-grow-1 m-auto'),
+        range_select('X projection', 'Range of Y axis bins to consider', 'x-proj', {y:str(y) for y in yrange}),
+        range_select('Y projection', 'Range of X axis bins to consider', 'y-proj', {x:str(x) for x in xrange})
+    ], className='d-flex justify-content-between align-items-center mb-2'
 )
