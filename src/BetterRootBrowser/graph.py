@@ -26,6 +26,15 @@ def make_display(obj_pkg):
     else:
         return html.Div(f'Object type {obj_pkg["type"]} is not currently supported.')
 
+def make_template_multipliers(template_dict):
+    pass
+
+def make_x_proj(array):
+    return array.sum(axis=0)
+
+def make_y_proj(array):
+    return array.sum(axis=1)
+
 def make_heatmap(hist_pkg):
     try:
         z,x,y = hist_pkg['data']
@@ -51,16 +60,16 @@ def make_heatmap(hist_pkg):
     
     fig.add_trace(
         go.Bar(
-           x=z.sum(axis=1), y=y, orientation="h",
-           marker=dict(color=z.sum(axis=1), coloraxis="coloraxis2")
-        ), row=2, col=2
+           x=x, y=make_x_proj(z),
+           marker=dict(color=make_x_proj(z), coloraxis="coloraxis3")
+        ), row=1, col=1
     )
 
     fig.add_trace(
         go.Bar(
-           x=x, y=z.sum(axis=0),
-           marker=dict(color=z.sum(axis=0), coloraxis="coloraxis3")
-        ), row=1, col=1
+           x=make_y_proj(z), y=y, orientation="h",
+           marker=dict(color=make_y_proj(z), coloraxis="coloraxis2")
+        ), row=2, col=2
     )
 
     fig.add_trace(
@@ -96,10 +105,17 @@ def make_heatmap(hist_pkg):
 
     # fig.write_html("plot.html")
     return dcc.Graph(
-        id=hist_pkg['name'],
+        id='rendered-graph',
         figure=fig,
-        style={'width': '90%', 'height': '90%'}
+        style={'width': '90%', 'height': '95%'}
     )
+
+def update_heatmap(fig, new_data):
+    data = np.transpose(new_data)
+    fig['data'][0]['y']= make_x_proj(data)
+    fig['data'][1]['x'] = make_y_proj(data)
+    fig['data'][2]['z'] = data
+    return fig
 
 def make_1D(hist_pkg):
     try:
@@ -112,12 +128,13 @@ def make_1D(hist_pkg):
 
     load_figure_template("sandstorm")
     return dcc.Graph(
-        id=hist_pkg['name'],
+        id='rendered-graph',
         figure=go.Figure(go.Bar(
             x=x, y=y,
             marker=dict(color=sum(y), coloraxis="coloraxis")
         )),
-        style={'width': '90%', 'height': '90%'}
+        style={'width': '90%', 'height': '90%'},
+        animate=True
     )
 
 def make_table(array_pkg):

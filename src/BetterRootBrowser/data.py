@@ -30,6 +30,11 @@ def to_str(obj):
 
     return ',\n\t'.join(lines)
 
+def unique_systematics(syst_names):
+    return sorted(set([
+        syst.rsplit('-',1)[0] for syst in syst_names if (syst.endswith('-up') or syst.endswith('-down'))
+    ]))
+
 class ObjPackage(dict):
     def __init__(self, **kwargs):
         self._allowed_keys = ["name", "type", "data", "xtitle", "ytitle", "fig"]

@@ -1,6 +1,7 @@
 from dash import dcc, html
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
+from slugify import slugify
 
 header = html.Div(
     [
@@ -24,8 +25,8 @@ footer = dbc.Alert(
 #---------------#
 # Template form #
 #---------------#
-template_form = dbc.Modal(
-    html.Div([
+template_form = html.Div(
+    [
         html.Div(className='d-flex justify-content-between align-items-center mb-3 mt-2', children=[
             html.H5('Specify a scheme for identifying template sets.'),
             dbc.Button('Click for help', id='template-instructions-button', color='info', n_clicks=0),
@@ -64,13 +65,25 @@ template_form = dbc.Modal(
 
         dbc.Form(
             [
+                dcc.Dropdown(id="hist-type", options=[
+                        {"label": "TH1", "value": 1},
+                        {"label": "TH2", "value": 2},
+                    ], value=None, className='mb-2'
+                ),
                 dbc.Input(type="text", placeholder="Nominal shape scheme", id="nominal-scheme", className='mb-2'),
                 dbc.Input(type="text", placeholder="+1 std. dev. shape scheme", id="up-scheme", className='mb-2'),
                 dbc.Input(type="text", placeholder="-1 std. dev. shape scheme", id="down-scheme", className='mb-2'),
-                dbc.Button("Create", color="info")
+                dbc.Button("Create", color="info", id='template-form-submit', type='submit')
             ]
         )
-    ], className='mt-2 ms-3 me-3 mb-2'),
+    ], className='mt-2 ms-3 me-3 mb-2', hidden=True, id='template-form'
+)
+
+template_modal = dbc.Modal(
+    children=[
+        html.H4('Open files before starting utility', hidden=False, className='mt-5 ms-3 me-3 mb-5', id='template-open-first-msg'),
+        template_form
+    ],
     id="template-util-modal", size="lg", is_open=False, className='h-25'
 )
 
@@ -81,7 +94,7 @@ file_path_input = html.Div([
         html.Div(
             [
                 dbc.Input(
-                    value='~/CMS/temp/nano_4.root',
+                    value='~/CMS/BoostedTH/rootfiles/THselection_QCD_16.root',
                     placeholder='Path to ROOT file...',
                     valid=False, invalid=False,
                     class_name='flex-grow-5', id='file-path'
@@ -98,7 +111,7 @@ file_path_input = html.Div([
                     class_name='ms-2', style={'min-width': 'max-content'},
                     id='template-button', type='submit'
                 ),
-                template_form
+                template_modal
             ], className='d-flex mb-1'
         ),
         html.P('', id='file-open-msg', className='ms-2 mb-0')
@@ -167,30 +180,20 @@ file_info_pane = dcc.Loading(
 #------------#
 # Right pane #
 #------------#
-display_area = dcc.Loading(
-    html.Div(
-        'Open a file and select an object from the left to display something',
-        id='loaded-content',
-        className='d-flex pt-2 ps-4 border-start flex-grow-1',
-        style={'overflow':'hidden','height': '100%', 'width': '100%', 'flex-flow': 'column nowrap'}
-    ),
+just_display = lambda content, prefix: html.Div(
+    content,
+    id=prefix+'loaded-content',
+    className='d-flex pt-2 ps-4',
+    style={'overflow':'hidden','height': '100%', 'width': '100%', 'flex-flow': 'column nowrap'}
+)#,
+#     type="default", parent_className='d-flex flex-grow-1', parent_style={'min-width':0, 'min-height': 0}
+# )
+
+display_area = html.Div(
+    just_display('Open a file and select an object from the left to display something.',''),
     id='display-area',
-    type="default",
-    parent_className='d-flex flex-grow-1',
-    parent_style={'min-width':0, 'min-height': 0} # makes sure tables dont overflow
-)
-    
-#-----------#
-# Content body #
-#-----------#
-content_body = html.Div(
-    [
-        file_info_pane,
-        display_area
-    ],
-    className='d-flex border-top mt-1 pb-2',
-    id='content-body',
-    style={'flex': 1, 'height': '100%', 'width': '100%', 'overflow': 'hidden'}
+    className='d-flex flex-grow-1 border-start',
+    style={'min-width':0, 'min-height': 0} # makes sure tables dont overflow
 )
 
 def range_select(title, text, id, valrange):
@@ -224,4 +227,54 @@ content_header_2D = lambda title, xrange, yrange: html.Div(
         range_select('Y projection', 'Range of X axis bins to consider', 'y-proj', {x:str(x) for x in xrange})
     ], className='d-flex justify-content-between align-items-center mb-2'
 )
+
+template_dropdown = lambda label, id, options: dbc.Select(
+    options=[
+        {"label": opt, "value": opt} for opt in ['']+options
+    ], id=id, disabled=False, placeholder=label, value=None,
+    className='mb-2'
+)
+
+template_sliders_gen = lambda systs: [
+    html.Div(
+        [
+            dbc.Label(syst),
+            dcc.Slider(
+                -3, 3, step=None, value=0, updatemode='drag',
+                id={'id': syst, 'type': 'template-slider'}
+            )
+        ], className='row align-items-center w-100', hidden=True if syst=='dummy' else False
+    ) for syst in systs
+]
+
+template_sliders = lambda systs: dbc.Col(
+    template_sliders_gen(systs), id='template-sliders'
+)
+
+template_util_body = lambda procs, hidden: html.Div([
+    just_display('Select a process and region to start','template-'),
+    html.Div([
+        html.Div([
+            template_dropdown('Process','process-select', procs),
+            template_dropdown('Region','region-select', [])
+        ]),
+        template_sliders(['dummy'])
+    ], className='w-25 p-2 overflow-auto'),
+], hidden=hidden, className='d-flex h-100 overflow-hidden flex-grow-1')
+
+
+#--------------#
+# Content body #
+#--------------#
+content_body = html.Div(
+    [
+        file_info_pane,
+        display_area
+    ],
+    className='d-flex border-top mt-1 pb-2',
+    id='content-body',
+    style={'flex': 1, 'height': '100%', 'width': '100%', 'overflow': 'hidden'}
+)
+
+
 
